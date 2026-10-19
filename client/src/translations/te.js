@@ -40,6 +40,7 @@ export const te = {
   noBeachFound: "బీచ్ కనుగొనబడలేదు",
   tryBeachName: "బీచ్ పేరు లేదా జిల్లాను ప్రయత్నించండి.",
   searchNotice: "శోధన నోటీసు",
+  searchHistorySaveFailed: "శోధన పూర్తయింది, కానీ శోధన చరిత్రలో సేవ్ చేయలేకపోయాము.",
   
   // Trust Section
   searchCheckAct: "శోధించండి • తనిఖీ చేయండి • చర్య తీసుకోండి",

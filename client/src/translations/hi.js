@@ -40,6 +40,7 @@ export const hi = {
   noBeachFound: "कोई समुद्र तट नहीं मिला",
   tryBeachName: "समुद्र तट का नाम या जिला आज़माएं।",
   searchNotice: "खोज सूचना",
+  searchHistorySaveFailed: "खोज पूरी हुई, लेकिन इसे खोज इतिहास में सहेजा नहीं जा सका।",
   
   // Trust Section
   searchCheckAct: "खोजें • जांचें • कार्य करें",

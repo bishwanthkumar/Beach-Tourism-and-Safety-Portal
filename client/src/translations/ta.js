@@ -40,6 +40,7 @@ export const ta = {
   noBeachFound: "கடற்கரை எதுவும் கிடைக்கவில்லை",
   tryBeachName: "கடற்கரை பெயர் அல்லது மாவட்டத்தை முயற்சிக்கவும்.",
   searchNotice: "தேடல் அறிவிப்பு",
+  searchHistorySaveFailed: "தேடல் முடிந்தது, ஆனால் தேடல் வரலாற்றில் சேமிக்க முடியவில்லை.",
   
   // Trust Section
   searchCheckAct: "தேடு • சரிபார் • செயல்",

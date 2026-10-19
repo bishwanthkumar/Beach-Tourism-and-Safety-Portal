@@ -5,7 +5,7 @@ import {
   ChevronRight, CloudSun, Wind, Droplets, HeartPulse, Navigation,
   Clock3, Sparkles
 } from 'lucide-react';
-import { searchBeaches } from '../api';
+import { recordSearchHistory, searchBeaches } from '../api';
 import LoadingScreen from '../components/LoadingScreen';
 import { LanguageContext, useLanguage } from '../contexts/LanguageContext';
 
@@ -47,6 +47,30 @@ export default function Home() {
     }
   }
 
+  async function saveSearchHistory(query, beach) {
+    try {
+      await recordSearchHistory(query, beach._id);
+      return true;
+    } catch (err) {
+      const detail = err?.response?.data?.message;
+      setError(`${t('searchHistorySaveFailed')}${detail ? ` ${detail}` : ''}`);
+      return false;
+    }
+  }
+
+  async function selectBeach(beach) {
+    const query = q.trim();
+    if (!query || !beach?._id) return;
+
+    setError('');
+    const saved = await saveSearchHistory(query, beach);
+    if (saved) {
+      openBeach(beach);
+    } else {
+      setTimeout(() => openBeach(beach), 1800);
+    }
+  }
+
   useEffect(() => {
     const query = q.trim();
     if (query.length < 2) {
@@ -65,17 +89,25 @@ export default function Home() {
 
   async function doSearch(e) {
     e?.preventDefault();
-    if (!q.trim()) return;
+    const query = q.trim();
+    if (!query) return;
     setError('');
     setLoading(true);
     try {
-      const items = await searchBeaches(q.trim());
+      const items = await searchBeaches(query);
       setSuggestions(items);
-      if (!items.length) setError(`${t('noBeachFound')} "${q.trim()}". ${t('tryBeachName')}`);
-      if (items[0]?._id) setTimeout(() => openBeach(items[0]), 950);
+      setLoading(false);
+      if (!items.length) {
+        setError(`${t('noBeachFound')} "${query}". ${t('tryBeachName')}`);
+        return;
+      }
+
+      const saved = await saveSearchHistory(query, items[0]);
+      setTimeout(() => openBeach(items[0]), saved ? 950 : 1800);
     } catch (err) {
       setSuggestions([]);
       setError(err.message || 'Could not search right now.');
+    } finally {
       setLoading(false);
     }
   }
@@ -123,7 +155,7 @@ export default function Home() {
             <div className="live-search-results" aria-label={t('searchResults')}>
               <div className="live-search-heading"><span>{t('chooseBeach')}</span><small>{suggestions.length} {t('matches')}</small></div>
               {suggestions.slice(0, 5).map((b) => (
-                <button type="button" className="live-search-card" key={b._id} onClick={() => nav(`/beaches/${b._id}`)}>
+                <button type="button" className="live-search-card" key={b._id} onClick={() => selectBeach(b)}>
                   {b.image ? <img className="live-search-thumb" src={b.image} alt={b.name} /> : <span className="live-search-marker"><MapPinned size={16}/></span>}
                   <span className="live-search-copy"><strong>{b.name}</strong><small>{b.district}, {b.state || t('india')}</small>{b.imageCredit && <small className="search-photo-credit">Photo: {b.imageCredit}</small>}{b.safety?.alertLevel === 'high' && <em className="search-alert high">{t('highAlert')}</em>}{b.safety?.alertLevel === 'yellow' && <em className="search-alert caution">{t('caution')}</em>}</span>
                   <ChevronRight size={17}/>
@@ -169,7 +201,7 @@ export default function Home() {
           </div>
           <div className="result-chips">
             {suggestions.slice(0, 8).map((b) => (
-              <button key={b._id} onClick={() => openBeach(b)}>
+              <button key={b._id} onClick={() => selectBeach(b)}>
                 <span><strong>{b.name}</strong><small>{b.district}, {b.state || t('india')}</small>{b.safety?.alertLevel === 'high' && <em className="search-alert high">{t('highAlert')}</em>}{b.safety?.alertLevel === 'yellow' && <em className="search-alert caution">{t('caution')}</em>}</span>
                 <ChevronRight size={15}/>
               </button>

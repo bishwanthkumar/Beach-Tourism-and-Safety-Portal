@@ -40,6 +40,7 @@ export const en = {
   noBeachFound: "No beach found for",
   tryBeachName: "Try a beach name or district.",
   searchNotice: "Search notice",
+  searchHistorySaveFailed: "Search completed, but it could not be saved to search history.",
   
   // Trust Section
   searchCheckAct: "SEARCH • CHECK • ACT",

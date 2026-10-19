@@ -434,46 +434,39 @@ async function findBeach(id) {
 ========================================================= */
 
 async function persistSearchHistory(query, beach) {
-  if (!mongoReady || !query || !beach) {
-    return null;
+  if (!mongoReady) {
+    throw new Error('MongoDB is not connected.');
   }
 
   const cleanedQuery = String(query).trim();
 
-  if (!cleanedQuery) {
-    return null;
+  if (!cleanedQuery || !beach?._id) {
+    throw new Error('A valid search query and database beach are required.');
   }
 
   const beachId = beach?._id ? String(beach._id) : null;
 
-  try {
-    const doc = await SearchHistory.findOneAndUpdate(
-      {
-        query: cleanedQuery,
-        beachId
-      },
-      {
-        query: cleanedQuery,
-        beachId,
-        beachName: beach.name,
-        district: beach.district || '',
-        state: beach.state || 'Tamil Nadu',
-        coordinates: beach.coordinates || null,
-        image: beach.image || null,
-        searchedAt: new Date()
-      },
-      {
-        upsert: true,
-        new: true,
-        setDefaultsOnInsert: true
-      }
-    );
-
-    return doc;
-  } catch (error) {
-    console.warn('Search history persistence failed:', error?.message || error);
-    return null;
-  }
+  return SearchHistory.findOneAndUpdate(
+    {
+      query: cleanedQuery,
+      beachId
+    },
+    {
+      query: cleanedQuery,
+      beachId,
+      beachName: beach.name,
+      district: beach.district || '',
+      state: beach.state || 'Tamil Nadu',
+      coordinates: beach.coordinates || null,
+      image: beach.image || null,
+      searchedAt: new Date()
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true
+    }
+  );
 }
 
 
@@ -608,6 +601,81 @@ app.get(
       res.status(500).json({
         success: false,
         message: err?.message || 'Failed to fetch search history'
+      });
+    }
+  }
+);
+
+app.post(
+  '/api/search-history',
+  async (req, res) => {
+    const query = typeof req.body?.query === 'string'
+      ? req.body.query.trim()
+      : '';
+    const beachId = typeof req.body?.beachId === 'string'
+      ? req.body.beachId.trim()
+      : '';
+
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        message: 'A non-empty search query is required.'
+      });
+    }
+
+    try {
+      const connected = await connectMongo();
+      if (!connected) {
+        return res.status(503).json({
+          success: false,
+          message: 'Search history is unavailable because MongoDB is not connected.'
+        });
+      }
+
+      if (!mongoose.isValidObjectId(beachId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'A valid database beach ID is required.'
+        });
+      }
+
+      const beach = await Beach.findById(beachId).lean();
+      if (!beach) {
+        return res.status(404).json({
+          success: false,
+          message: 'The selected beach was not found.'
+        });
+      }
+
+      const normalizedQuery = query.toLocaleLowerCase();
+      const searchableValues = [
+        beach.name,
+        beach.district,
+        beach.state,
+        ...(Array.isArray(beach.tags) ? beach.tags : [])
+      ];
+      const matchesQuery = searchableValues.some(
+        (value) => typeof value === 'string'
+          && value.toLocaleLowerCase().includes(normalizedQuery)
+      );
+
+      if (!matchesQuery) {
+        return res.status(400).json({
+          success: false,
+          message: 'The selected beach does not match the search query.'
+        });
+      }
+
+      const saved = await persistSearchHistory(query, withBeachImage(beach));
+      return res.status(200).json({
+        success: true,
+        data: saved
+      });
+    } catch (err) {
+      console.error('Search history persistence failed:', err?.message || err);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to save search history.'
       });
     }
   }
@@ -842,15 +910,6 @@ app.get(
           );
       }
 
-
-      const activeBeach =
-        q && list.length
-          ? list.find((beach) => beach.name.toLowerCase() === q.toLowerCase()) || list[0]
-          : null;
-
-      if (activeBeach) {
-        await persistSearchHistory(q, activeBeach);
-      }
 
       res.json({
 

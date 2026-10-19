@@ -14,6 +14,14 @@ export async function searchBeaches(q) {
   return data.data || [];
 }
 
+export async function recordSearchHistory(query, beachId) {
+  const { data } = await API.post('/search-history', {
+    query: String(query).trim(),
+    beachId: String(beachId)
+  });
+  return data;
+}
+
 export async function getBeachFull(id) {
   const { data } = await API.get(`/beaches/${id}/full`);
   return data.data;
