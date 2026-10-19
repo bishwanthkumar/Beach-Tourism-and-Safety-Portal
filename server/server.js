@@ -11,13 +11,12 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 
 import Beach from './models/Beach.js';
-import Facility from './models/Facility.js';
 import Alert from './models/Alert.js';
 import Report from './models/Report.js';
+import SearchHistory from './models/SearchHistory.js';
 
 import {
-  beaches as fallbackBeaches,
-  makeFacilities
+  beaches as fallbackBeaches
 } from './data.js';
 
 import {
@@ -30,8 +29,13 @@ import {
 } from './services/marine.js';
 
 import {
-  computeSafetyStatus
+  computeSafetyStatus,
+  createLiveAlerts
 } from './services/safety.js';
+
+import {
+  getNearbyFacilities
+} from './services/facilities.js';
 
 
 /* =========================================================
@@ -41,7 +45,7 @@ import {
 const app = express();
 
 const PORT = Number(
-  process.env.PORT || 5000
+  process.env.PORT || 5001
 );
 
 const CLIENT_ORIGIN =
@@ -50,6 +54,54 @@ const CLIENT_ORIGIN =
 
 const MONGODB_URI =
   process.env.MONGODB_URI?.trim() || '';
+
+
+const beachImageCatalog = {
+  'Agatti Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Agatti_island%2C_Lakshadweep.jpg', credit: 'icultist · CC BY 2.0', source: 'https://commons.wikimedia.org/wiki/File:Agatti_island,_Lakshadweep.jpg' },
+  'Baga Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Baga_Beach%2C_Goa.jpg', credit: 'Slyronit · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Baga_Beach,_Goa.jpg' },
+  'Besant Nagar Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/c/cf/Besant_Nagar_Beach_Chennai_india.jpg', credit: 'N. Vivekananthamoorthy · CC BY 4.0', source: 'https://commons.wikimedia.org/wiki/File:Besant_Nagar_Beach_Chennai_india.jpg' },
+  'Dhanushkodi Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Dhanushkodi_03.jpg', credit: 'Athulvis · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Dhanushkodi_03.jpg' },
+  'Digha Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/0/09/Old_Digha_Beach_at_Sunrise_1.jpg', credit: 'Ne0Freedom · CC BY-SA 3.0', source: 'https://commons.wikimedia.org/wiki/File:Old_Digha_Beach_at_Sunrise_1.jpg' },
+  "Elliot's Beach": { image: 'https://upload.wikimedia.org/wikipedia/commons/5/52/Elliots_Beach_at_Besant_Nagar%2C_Chennai.JPG', credit: 'KARTY JazZ · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Elliots_Beach_at_Besant_Nagar,_Chennai.JPG' },
+  'Juhu Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Juhu_beach_2019.jpg', credit: 'Shishirdasika · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Juhu_beach_2019.jpg' },
+  'Kanyakumari Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/5/52/Kanyakumari_beach_2020.jpg', credit: 'Casual clicks · CC0', source: 'https://commons.wikimedia.org/wiki/File:Kanyakumari_beach_2020.jpg' },
+  'Kovalam Beach|Thiruvananthapuram': { image: 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Kovalam_Beach_%2C_Kerala.jpg', credit: 'Harvinder Chandigarh · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Kovalam_Beach_,_Kerala.jpg' },
+  'Kovalam Beach|Chengalpattu': { image: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Kovalam_Beach%2C_Chennai_-_Mid_Sea_Diving.jpg', credit: 'KARTY JazZ · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Kovalam_Beach,_Chennai_-_Mid_Sea_Diving.jpg' },
+  'Mahabalipuram Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/d/d2/Ideal_Beach_Coconuts_Mahabalipuram_Sep22_R16_06301.jpg', credit: 'Timothy A. Gonsalves · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Ideal_Beach_Coconuts_Mahabalipuram_Sep22_R16_06301.jpg' },
+  'Manapad Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Manapad-Manavai-seashore-catholic-church-Thoothukudi-district-TamilNadu.JPG', credit: 'தகவலுழவன் · CC BY-SA 3.0', source: 'https://commons.wikimedia.org/wiki/File:Manapad-Manavai-seashore-catholic-church-Thoothukudi-district-TamilNadu.JPG' },
+  'Marina Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Marina_and_the_sailors.jpg', credit: 'Abu Abdullah 23 · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Marina_and_the_sailors.jpg' },
+  'Nagapattinam Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/d/d6/Fisherman_preparing_their_nets_at_Nagapattinam_Beach.jpg', credit: 'Matthew T Rader · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Fisherman_preparing_their_nets_at_Nagapattinam_Beach.jpg' },
+  'Om Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/5/53/PXL_20260103_101009613_People_and_Beach_Om_Beach_Gokarna%2C_Karnataka_35.jpg', credit: 'Sourabh.biswas003 · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:PXL_20260103_101009613_People_and_Beach_Om_Beach_Gokarna,_Karnataka_35.jpg' },
+  'Pichavaram Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Pichavaram_Mangrove_Forest.jpg', credit: 'Satdeep Gill · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Pichavaram_Mangrove_Forest.jpg' },
+  'Poompuhar Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/1/11/Poompuhar_Beach_with_lighthouse_and_visitors1.jpg', credit: 'E. Saravanan · CC0', source: 'https://commons.wikimedia.org/wiki/File:Poompuhar_Beach_with_lighthouse_and_visitors1.jpg' },
+  'Puri Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/4/45/At_Puri_beach_05.jpg', credit: 'Kritzolina · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:At_Puri_beach_05.jpg' },
+  'RK Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/8/84/RK_Beach_Visakhapatnam_Nov_2012_-_02.JPG', credit: 'Rishabh Tatiraju · CC BY-SA 3.0', source: 'https://commons.wikimedia.org/wiki/File:RK_Beach_Visakhapatnam_Nov_2012_-_02.JPG' },
+  'Radhanagar Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/c/ce/Radhanagar_Beach_in_the_Andaman_Islands.jpg', credit: 'La Vacanza Travel Private Limited · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Radhanagar_Beach_in_the_Andaman_Islands.jpg' },
+  'Rameswaram Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/4/48/Rameswaram_coral_beach.jpg', credit: 'Shajinss · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Rameswaram_coral_beach.jpg' },
+  'Shivrajpur Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Shivrajpur_beach_Devbhoomi_Dwarka_district.jpg', credit: 'VasuVR · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Shivrajpur_beach_Devbhoomi_Dwarka_district.jpg' },
+  'Silver Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Silver_beach_at_Cuddalore.jpg', credit: 'Sharmila Rangaraj · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Silver_beach_at_Cuddalore.jpg' },
+  'Tharangambadi Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Bungalow_on_the_Beach%2C_Neemrana_Hotels%2C_in_Tranquebar%2C_Tamil_Nadu.jpg', credit: 'Koshy Koshy · CC BY 2.0', source: 'https://commons.wikimedia.org/wiki/File:Bungalow_on_the_Beach,_Neemrana_Hotels,_in_Tranquebar,_Tamil_Nadu.jpg' },
+  'Tuticorin Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Fishing_in_Tuticorin_beach.jpg', credit: 'Ramkumar · CC BY-SA 2.0', source: 'https://commons.wikimedia.org/wiki/File:Fishing_in_Tuticorin_beach.jpg' },
+  'Varkala Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/4/49/Varkala_Beach%2C_Varkala%2C_Kerala.jpg', credit: 'Devender Goyal · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Varkala_Beach,_Varkala,_Kerala.jpg' },
+  'Velankanni Beach': { image: 'https://upload.wikimedia.org/wikipedia/commons/3/3d/Women_at_work_in_Uttan_-_Velankanni_Beach.jpg', credit: 'Balurbala · CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Women_at_work_in_Uttan_-_Velankanni_Beach.jpg' }
+};
+
+const fallbackBeachImage = 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1600&q=80';
+
+function withBeachImage(beach) {
+  if (!beach) {
+    return beach;
+  }
+
+  const catalogEntry = beachImageCatalog[`${beach.name}|${beach.district}`] || beachImageCatalog[beach.name];
+
+  return {
+    ...beach,
+    image: catalogEntry?.image || beach.image || fallbackBeachImage,
+    imageCredit: catalogEntry?.credit || null,
+    imageSource: catalogEntry?.source || null
+  };
+}
 
 
 /* =========================================================
@@ -87,6 +139,9 @@ function isAllowedOrigin(origin) {
         url.hostname
       ) &&
       url.protocol === 'http:'
+    ) || (
+      url.protocol === 'http:' &&
+      /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(url.hostname)
     );
   } catch {
     return false;
@@ -315,7 +370,7 @@ function toPlainFallbackBeach(
   index = 0
 ) {
 
-  return {
+  return withBeachImage({
     ...raw,
 
     state:
@@ -329,7 +384,7 @@ function toPlainFallbackBeach(
     id:
       raw._id ||
       `fallback-${index}`
-  };
+  });
 }
 
 
@@ -339,29 +394,34 @@ function toPlainFallbackBeach(
 
 async function findBeach(id) {
 
-  if (mongoReady) {
+  const idText = String(id);
 
-    return Beach
-      .findById(id)
-      .lean();
+  if (idText.startsWith('fallback-')) {
+    const idx = Number(idText.replace('fallback-', ''));
+    const fallbackBeach = fallbackBeaches[idx];
+
+    if (!fallbackBeach) {
+      return null;
+    }
+
+    if (mongoReady) {
+      const beach = await Beach
+        .findOne({ name: fallbackBeach.name })
+        .lean();
+
+      return withBeachImage(beach);
+    }
+
+    return toPlainFallbackBeach(fallbackBeach, idx);
   }
 
+  if (mongoReady) {
 
-  const idx = Number(
-    String(id)
-      .replace('fallback-', '')
-  );
+    const beach = await Beach
+      .findById(id)
+      .lean();
 
-
-  if (
-    Number.isInteger(idx) &&
-    fallbackBeaches[idx]
-  ) {
-
-    return toPlainFallbackBeach(
-      fallbackBeaches[idx],
-      idx
-    );
+    return withBeachImage(beach);
   }
 
 
@@ -372,6 +432,50 @@ async function findBeach(id) {
 /* =========================================================
    BEACH ALERTS
 ========================================================= */
+
+async function persistSearchHistory(query, beach) {
+  if (!mongoReady || !query || !beach) {
+    return null;
+  }
+
+  const cleanedQuery = String(query).trim();
+
+  if (!cleanedQuery) {
+    return null;
+  }
+
+  const beachId = beach?._id ? String(beach._id) : null;
+
+  try {
+    const doc = await SearchHistory.findOneAndUpdate(
+      {
+        query: cleanedQuery,
+        beachId
+      },
+      {
+        query: cleanedQuery,
+        beachId,
+        beachName: beach.name,
+        district: beach.district || '',
+        state: beach.state || 'Tamil Nadu',
+        coordinates: beach.coordinates || null,
+        image: beach.image || null,
+        searchedAt: new Date()
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    return doc;
+  } catch (error) {
+    console.warn('Search history persistence failed:', error?.message || error);
+    return null;
+  }
+}
+
 
 async function getBeachAlerts(
   beachId,
@@ -387,7 +491,8 @@ async function getBeachAlerts(
     return Alert
       .find({
         beachId,
-        active: true
+        active: true,
+        source: { $not: /demo/i }
       })
       .sort({
         issuedAt: -1
@@ -400,76 +505,7 @@ async function getBeachAlerts(
      Fallback demo mode
   --------------------------------------------- */
 
-  const result = [];
-
-
-  if (
-    fallbackIndex !== null &&
-    fallbackIndex % 3 === 0
-  ) {
-
-    result.push({
-
-      _id:
-        `a-${fallbackIndex}`,
-
-      beachId,
-
-      title:
-        'Strong wind advisory',
-
-      severity:
-        'caution',
-
-      description:
-        'Exercise care near open shore areas and follow local beach instructions.',
-
-      source:
-        'BeachSafe demo data',
-
-      issuedAt:
-        new Date().toISOString(),
-
-      active:
-        true
-    });
-  }
-
-
-  if (
-    fallbackIndex !== null &&
-    fallbackIndex % 5 === 0
-  ) {
-
-    result.push({
-
-      _id:
-        `b-${fallbackIndex}`,
-
-      beachId,
-
-      title:
-        'High wave information',
-
-      severity:
-        'high',
-
-      description:
-        'Water entry should follow current local authority and lifeguard guidance.',
-
-      source:
-        'BeachSafe demo data',
-
-      issuedAt:
-        new Date().toISOString(),
-
-      active:
-        true
-    });
-  }
-
-
-  return result;
+  return [];
 }
 
 
@@ -549,6 +585,34 @@ app.get(
 /* =========================================================
    HEALTH CHECK
 ========================================================= */
+
+app.get(
+  '/api/search-history',
+  async (req, res) => {
+    try {
+      await connectMongo();
+
+      const limit = Math.min(Math.max(Number(req.query.limit || 10), 1), 50);
+      const history = await SearchHistory
+        .find({})
+        .sort({ searchedAt: -1 })
+        .limit(limit)
+        .lean();
+
+      res.json({
+        success: true,
+        data: history
+      });
+    } catch (err) {
+      console.error('Search history error:', err);
+      res.status(500).json({
+        success: false,
+        message: err?.message || 'Failed to fetch search history'
+      });
+    }
+  }
+);
+
 
 app.get(
   '/api/health',
@@ -662,6 +726,8 @@ app.get(
             })
             .limit(limit)
             .lean();
+
+        list = list.map((beach) => withBeachImage(beach));
       }
 
 
@@ -762,7 +828,7 @@ app.get(
 
                 return {
 
-                  ...beach,
+                  ...withBeachImage(beach),
 
                   safety: {
 
@@ -776,6 +842,15 @@ app.get(
           );
       }
 
+
+      const activeBeach =
+        q && list.length
+          ? list.find((beach) => beach.name.toLowerCase() === q.toLowerCase()) || list[0]
+          : null;
+
+      if (activeBeach) {
+        await persistSearchHistory(q, activeBeach);
+      }
 
       res.json({
 
@@ -832,6 +907,8 @@ app.get(
         );
 
 
+      const enrichedBeach = withBeachImage(beach);
+
       if (!beach) {
 
         return res.status(404).json({
@@ -876,7 +953,7 @@ app.get(
 
         data: {
 
-          beach,
+          beach: enrichedBeach,
 
           alerts
         }
@@ -921,6 +998,8 @@ app.get(
         await findBeach(
           req.params.id
         );
+
+      const enrichedBeach = withBeachImage(beach);
 
 
       if (!beach) {
@@ -1007,11 +1086,18 @@ app.get(
          Alerts
       --------------------------------------------- */
 
+      const liveAlerts =
+        createLiveAlerts({
+          weather,
+          marine,
+          beachId: beach._id
+        });
+
       const alertData =
         alertsResult.status ===
         'fulfilled'
-          ? alertsResult.value
-          : [];
+          ? [...alertsResult.value, ...liveAlerts]
+          : liveAlerts;
 
 
       /* ---------------------------------------------
@@ -1034,30 +1120,13 @@ app.get(
          Facilities
       --------------------------------------------- */
 
-      let facilities;
+      const facilitiesResult = await Promise.allSettled([
+        getNearbyFacilities(beach)
+      ]);
 
-
-      if (mongoReady) {
-
-        facilities =
-          await Facility
-            .find({
-              beachId:
-                beach._id
-            })
-            .sort({
-              distanceMeters: 1
-            })
-            .lean();
-
-      } else {
-
-        facilities =
-          makeFacilities(
-            beach,
-            beach._id
-          );
-      }
+      const facilities = facilitiesResult[0].status === 'fulfilled'
+        ? facilitiesResult[0].value
+        : [];
 
 
       /* ---------------------------------------------
@@ -1071,7 +1140,7 @@ app.get(
 
         data: {
 
-          beach,
+          beach: enrichedBeach,
 
 
           weather:
@@ -1175,24 +1244,13 @@ app.get(
       }
 
 
-      const facilities =
-        mongoReady
+      const facilitiesResult = await Promise.allSettled([
+        getNearbyFacilities(beach)
+      ]);
 
-          ? await Facility
-              .find({
-                beachId:
-                  beach._id
-              })
-              .sort({
-                distanceMeters:
-                  1
-              })
-              .lean()
-
-          : makeFacilities(
-              beach,
-              beach._id
-            );
+      const facilities = facilitiesResult[0].status === 'fulfilled'
+        ? facilitiesResult[0].value
+        : [];
 
 
       res.json({

@@ -24,11 +24,11 @@ function App() {
           <div className="container footer-grid">
             <div>
               <h3>BeachSafe</h3>
-              <p>Interactive Beach Tourism & Safety Information Portal</p>
+              <p>India-wide beach tourism and safety information portal</p>
             </div>
             <div>
               <span>React • Node • Express • MongoDB</span>
-              <small>Tamil Nadu focused safety experience</small>
+              <small>Coverage across coastal India</small>
             </div>
           </div>
         </footer>

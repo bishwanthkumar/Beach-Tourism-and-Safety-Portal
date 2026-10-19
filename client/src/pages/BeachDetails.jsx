@@ -89,12 +89,27 @@ export default function BeachDetails() {
         </div>
 
         <div className="beach-photo-wrap">
-          <img src={beach.image} alt={beach.name}/>
+          {beach.image ? (
+            <img
+              src={beach.image}
+              alt={beach.name}
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+                const fallback = event.currentTarget.parentElement?.querySelector('.beach-photo-placeholder');
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="beach-photo-placeholder" style={beach.image ? { display: 'none' } : undefined}>
+            <strong>{beach.name}</strong>
+            <span>{t('photoUnavailable')}</span>
+          </div>
           <div className="beach-photo-shade"></div>
           <div className="beach-photo-content">
             <span className="photo-chip"><ShieldCheck size={13}/> {t('safetyInformation')}</span>
             <div>
               <strong>{beach.tags?.join('  •  ')}</strong>
+              {beach.imageCredit && <small><a href={beach.imageSource} target="_blank" rel="noreferrer">{beach.imageCredit}</a></small>}
               <small>{t('updatedEnvironmental')}</small>
             </div>
           </div>

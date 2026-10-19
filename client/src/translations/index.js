@@ -2,12 +2,14 @@ import { en } from './en';
 import { ta } from './ta';
 import { hi } from './hi';
 import { te } from './te';
+import { ml } from './ml';
 
 export const translations = {
   en,
   ta,
   hi,
-  te
+  te,
+  ml
 };
 
 export const languages = [
@@ -15,4 +17,5 @@ export const languages = [
   { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
   { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' }
+  ,{ code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' }
 ];

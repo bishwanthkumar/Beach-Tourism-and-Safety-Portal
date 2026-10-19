@@ -29,7 +29,7 @@ cd ../client && npm install
 Copy `server/.env.example` to `server/.env` and set:
 
 ```env
-PORT=5000
+PORT=5001
 MONGODB_URI=mongodb://127.0.0.1:27017/beachsafety
 CLIENT_ORIGIN=http://localhost:5173
 ```
@@ -51,7 +51,7 @@ Do not commit `server/.env` or place credentials in source code. The repository 
 Check the connection after starting the API:
 
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:5001/api/health
 ```
 
 MongoDB connected responses include `"mongoReady":true` and `"database":"MongoDB"`. If MongoDB is unavailable, the API explicitly reports `"database":"fallback demo data"` and the frontend remains usable.
@@ -96,16 +96,16 @@ Open the frontend URL shown by Vite, normally `http://localhost:5173` or the nex
 3. Add this environment variable:
 
 ```env
-VITE_API_URL=https://<your-api-domain>/api
+VITE_API_URL=/api
 ```
 
-The included `client/vercel.json` handles Vite history fallback for routes such as `/beaches/:id`.
+The included `client/vercel.json` proxies `/api` requests to the deployed Express API and handles Vite history fallback for routes such as `/beaches/:id`.
 
 The Express API must already be hosted at `your-api-domain` and configured with:
 
 ```env
 MONGODB_URI=mongodb+srv://<atlas-user>:<atlas-password>@<atlas-host>/beachsafety?retryWrites=true&w=majority
-CLIENT_ORIGIN=https://<your-vercel-domain>
+CLIENT_ORIGIN=https://beachsafe-portal.vercel.app
 ```
 
 Vercel hosts the frontend in this setup; it does not automatically host the existing Express server.

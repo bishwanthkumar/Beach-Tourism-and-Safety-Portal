@@ -10,15 +10,15 @@ import LoadingScreen from '../components/LoadingScreen';
 import { LanguageContext, useLanguage } from '../contexts/LanguageContext';
 
 const popular = [
-  { name: 'Marina Beach', location: 'Chennai', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=90', id: 'fallback-0', accent: 'Urban coast' },
-  { name: "Elliot's Beach", location: 'Chennai', image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1000&q=90', id: 'fallback-1', accent: 'Promenade' },
-  { name: 'Kovalam Beach', location: 'Chengalpattu', image: 'https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1000&q=90', id: 'fallback-2', accent: 'Surf & coast' }
+  { name: 'Marina Beach', location: 'Chennai', image: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Marina_and_the_sailors.jpg', imageCredit: 'Abu Abdullah 23 · CC BY-SA 4.0', id: 'fallback-0', accent: 'Urban coast' },
+  { name: "Elliot's Beach", location: 'Chennai', image: 'https://upload.wikimedia.org/wikipedia/commons/5/52/Elliots_Beach_at_Besant_Nagar%2C_Chennai.JPG', imageCredit: 'KARTY JazZ · CC BY-SA 4.0', id: 'fallback-1', accent: 'Promenade' },
+  { name: 'Kovalam Beach', location: 'Chengalpattu', image: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Kovalam_Beach%2C_Chennai_-_Mid_Sea_Diving.jpg', imageCredit: 'KARTY JazZ · CC BY-SA 4.0', id: 'fallback-2', accent: 'Surf & coast' }
 ];
 
 const browseTiles = [
-  ['Chennai Coast', 'Explore urban beaches', '#e8f6fb'],
-  ['Heritage Coast', 'Mahabalipuram · Poompuhar', '#fff6e8'],
-  ['South Coast', 'Rameswaram · Kanyakumari', '#eef8f1']
+  ['East Coast', 'Chennai · Puri · Digha', '#e8f6fb'],
+  ['West Coast', 'Goa · Kerala · Gujarat', '#fff6e8'],
+  ['Island Coast', 'Andaman · Lakshadweep', '#eef8f1']
 ];
 
 export default function Home() {
@@ -80,6 +80,18 @@ export default function Home() {
     }
   }
 
+  async function openPopularBeach(name, district) {
+    try {
+      const beaches = await searchBeaches(name);
+      const beach = beaches.find((item) => item.district === district) || beaches[0];
+      if (beach?._id) {
+        nav(`/beaches/${beach._id}`);
+      }
+    } catch {
+      setError('Could not open this beach right now.');
+    }
+  }
+
   return (
     <div className="home-page page-transition">
       {loading && <LoadingScreen text={`${t('preparingSearch')} ${q.trim()}`} language={language} />}
@@ -112,8 +124,8 @@ export default function Home() {
               <div className="live-search-heading"><span>{t('chooseBeach')}</span><small>{suggestions.length} {t('matches')}</small></div>
               {suggestions.slice(0, 5).map((b) => (
                 <button type="button" className="live-search-card" key={b._id} onClick={() => nav(`/beaches/${b._id}`)}>
-                  <span className="live-search-marker"><MapPinned size={16}/></span>
-                  <span className="live-search-copy"><strong>{b.name}</strong><small>{b.district}, {b.state || t('india')}</small>{b.safety?.alertLevel === 'high' && <em className="search-alert high">{t('highAlert')}</em>}{b.safety?.alertLevel === 'yellow' && <em className="search-alert caution">{t('caution')}</em>}</span>
+                  {b.image ? <img className="live-search-thumb" src={b.image} alt={b.name} /> : <span className="live-search-marker"><MapPinned size={16}/></span>}
+                  <span className="live-search-copy"><strong>{b.name}</strong><small>{b.district}, {b.state || t('india')}</small>{b.imageCredit && <small className="search-photo-credit">Photo: {b.imageCredit}</small>}{b.safety?.alertLevel === 'high' && <em className="search-alert high">{t('highAlert')}</em>}{b.safety?.alertLevel === 'yellow' && <em className="search-alert caution">{t('caution')}</em>}</span>
                   <ChevronRight size={17}/>
                 </button>
               ))}
@@ -229,13 +241,16 @@ export default function Home() {
         </div>
 
         <div className="popular-grid">
-          {popular.map((b) => (
-            <button className="popular-card" key={b.id} onClick={() => nav(`/beaches/${b.id}`)}>
-              <img src={b.image} alt={b.name}/>
+            {popular.map((b) => (
+              <button className="popular-card" key={b.name} onClick={() => openPopularBeach(b.name, b.location === 'Chengalpattu' ? 'Chengalpattu' : b.location)}>
+                {b.image ? <img src={b.image} alt={b.name} /> : (
+                  <div className="popular-placeholder"><MapPinned size={32}/><strong>{b.name}</strong><small>{t('photoUnavailable')}</small></div>
+                )}
               <div className="popular-gradient"></div>
               <div className="popular-content">
                 <span>{b.location} · {b.accent}</span>
                 <h3>{b.name}</h3>
+                <small className="popular-photo-credit">Photo: {b.imageCredit}</small>
                 <small>{t('openFullSafetyPage')} <ArrowRight size={14}/></small>
               </div>
             </button>

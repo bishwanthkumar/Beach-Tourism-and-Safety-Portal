@@ -1,5 +1,5 @@
 import { useContext, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Languages, ShieldAlert, Map, ChevronDown } from 'lucide-react';
 import Logo from './Logo';
 import { LanguageContext } from '../contexts/LanguageContext';
@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { language, setLanguage } = useContext(LanguageContext);
   const { t, languages } = useLanguage(language);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -14,6 +15,20 @@ export default function Navbar() {
   const changeLanguage = (langCode) => {
     setLanguage(langCode);
     setShowLangMenu(false);
+  };
+
+  const goToEmergency = (event) => {
+    event.preventDefault();
+
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        document.getElementById('emergency')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+      return;
+    }
+
+    document.getElementById('emergency')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
@@ -48,7 +63,9 @@ export default function Navbar() {
               </div>
             )}
           </div>
-          <Link className="nav-emergency" to="/#emergency"><ShieldAlert size={16}/> {t('emergency')}</Link>
+          <button type="button" className="nav-emergency" onClick={goToEmergency}>
+            <ShieldAlert size={16}/> {t('emergency')}
+          </button>
         </div>
       </div>
     </header>

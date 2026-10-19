@@ -468,6 +468,7 @@ small {
 .live-search-card { width: 100%; display: flex; align-items: center; gap: 11px; padding: 12px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: white; text-align: left; transition: background 0.2s ease, border-color 0.2s ease; }
 .live-search-card:hover { border-color: rgba(232, 245, 243, 0.2); background: rgba(255, 255, 255, 0.1); }
 .live-search-marker { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(244, 180, 106, 0.15); color: #f4b46a; }
+.live-search-thumb { width: 54px; height: 54px; object-fit: cover; border-radius: 10px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.18); }
 .live-search-copy { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 3px; }
 .live-search-copy strong { overflow: hidden; color: #fff; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .live-search-copy small { color: rgba(217, 242, 238, 0.68); font-size: 11px; }
@@ -858,6 +859,21 @@ small {
   position: relative;
   z-index: 0;
 }
+.popular-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--sea-dark);
+  background: linear-gradient(145deg, #dff5f5 0%, #f9f1dc 100%);
+  text-align: center;
+}
+.popular-placeholder strong { font-size: 24px; }
+.popular-placeholder small { color: var(--muted); }
 .popular-card:hover img { 
   transform: scale(1.1); 
 }
@@ -1104,6 +1120,20 @@ small {
   object-fit: cover;
   transition: transform 0.6s ease;
 }
+.beach-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  background: linear-gradient(135deg, #087f8c 0%, #0e4f66 55%, #1b3044 100%);
+  text-align: center;
+}
+.beach-photo-placeholder strong { font-size: clamp(28px, 4vw, 52px); }
+.beach-photo-placeholder span { color: rgba(255, 255, 255, .76); }
 .beach-photo-wrap:hover img {
   transform: scale(1.05);
 }
