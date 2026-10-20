@@ -7,7 +7,7 @@ A MERN-stack beach safety portal for beaches across India. The app supports beac
 - `Frontend/`: React, Vite, React Router, Leaflet, and Lucide
 - `Backend/`: Node.js, Express, and Mongoose API
 - Database: MongoDB (local for development or MongoDB Atlas)
-- Hosting: Vercel for the frontend and Render for the API
+- Hosting: one Vercel Services project and domain for the frontend and API
 
 ## Local development
 
@@ -24,6 +24,8 @@ Alternatively, install dependencies separately:
 npm install --prefix Backend
 npm install --prefix Frontend
 ```
+
+The root `npm run dev` command also requires the root `npm install` above (for `concurrently`). If you only install the two application folders, start Backend and Frontend using the separate-terminal commands below.
 
 Copy `Backend/.env.example` to `Backend/.env`. Use a local MongoDB instance or set `MONGODB_URI` to an Atlas connection string. The example values start the API on port `5001` and allow the local Vite origin `http://localhost:5173`.
 
@@ -42,65 +44,49 @@ npm --prefix Frontend run dev
 
 The Vite development server proxies `/api` requests to `http://localhost:5001`. Open the frontend URL shown by Vite, normally `http://localhost:5173`.
 
-## Deploy to MongoDB Atlas, Render, and Vercel
+## Deploy to Vercel Services with MongoDB Atlas
 
-No provider account, database, or deployment is created by this repository. Supply private values through provider dashboards only; never commit `.env` files or credentials.
+The root `vercel.json` configures separate Vercel Services for `Frontend/` and `Backend/` in one Vercel project. The Backend uses Vercel's Express framework detection and runs `npm install`; the Frontend uses Vite. [Vercel Services](https://vercel.com/docs/services) is currently in Beta; confirm it is available for your account before deployment. Both services ship in the same deployment and use one public domain.
 
-### 1. Create and configure MongoDB Atlas
+### 1. Configure MongoDB Atlas
 
 1. Create an Atlas project and cluster, then create a database user with a strong password and only the permissions the application needs.
-2. In **Network Access**, allow connections from the Render service's outbound IP ranges for its region (check Render's service dashboard/documentation). Prefer stable or static outbound IPs when available. Do not leave Atlas open to all addresses; if a temporary `0.0.0.0/0` rule is unavoidable, use a strong database password and remove the rule as soon as a narrower rule is possible.
-3. Get the cluster connection string and select/create the `beachsafety` database. Replace the URI placeholders with the database user's values. URL-encode any special characters in the username or password. Keep this URI private.
+2. In Atlas **Network Access**, allow connections from Vercel according to the current Vercel networking guidance for your plan and region. If a broad `0.0.0.0/0` rule is required for your deployment, use a strong database password and restrict the database user's permissions; do not treat the connection string as public.
+3. Get the Atlas connection string and use the `beachsafety` database. URL-encode any special characters in the database username or password.
 
-### 2. Create the Vercel project and note its origin
+### 2. Create the single Vercel project
 
-Import this repository into Vercel and set the **Root Directory** to `Frontend`. The Vercel configuration uses `npm run build` and publishes `dist`; the rewrite to `/index.html` supports direct navigation to nested SPA routes.
+1. Import this GitHub repository as one Vercel project.
+2. Keep the project **Root Directory** at the repository root. Do not set it to `Frontend/`; root `vercel.json` declares the two service roots.
+3. Deploy the project. The frontend service uses Vite and serves deep links through its service-scoped SPA rewrite. Requests to `/api` and `/api/*` are routed first to the Express backend with their original paths, matching the existing Express routes.
+4. In **Project Settings → Domains**, add your custom domain and follow Vercel's DNS instructions. The `vercel.app` production domain also serves both services.
 
-Note the exact production origin (scheme and host only, for example `https://your-app.vercel.app`). You will set this as Render's `CLIENT_ORIGIN`. Do not include a path or trailing slash. Add any custom production domain here too if it will be used.
+### 3. Configure the backend environment
 
-If you use Vercel Preview deployments, set `VITE_API_URL` for the Preview environment too and add each stable preview origin you use to Render's comma-separated `CLIENT_ORIGIN`. CORS allows only the configured exact origins (apart from local development); per-deployment preview URLs are not automatically trusted.
-
-### 3. Deploy the API on Render
-
-Create a Render Blueprint from the repository root using `render.yaml`, or configure a Node web service manually with:
-
-- **Root Directory:** `Backend`
-- **Build Command:** `npm install`
-- **Start Command:** `npm start`
-- **Health Check Path:** `/api/health`
-
-Set these service environment variables in Render's dashboard:
-
-- `MONGODB_URI`: the private Atlas connection string from step 1.
-- `CLIENT_ORIGIN`: the exact Vercel production origin from step 2. For multiple origins, separate the origins with commas.
-
-The Blueprint marks both values `sync: false`, so they must be supplied through the dashboard and are not stored in the repository. Render provides `PORT` automatically. After deployment, note the API's HTTPS service URL.
-
-### 4. Configure and deploy the Vercel frontend
-
-In Vercel project settings, add this environment variable for the Production environment (and Preview if you use preview deployments; include `/api` at the end):
+In the Vercel project settings, add this environment variable to the **Backend service only** for each environment you deploy (Production, and Preview if needed):
 
 ```text
-VITE_API_URL=https://<your-render-service>.onrender.com/api
+MONGODB_URI=<private MongoDB Atlas connection string>
 ```
 
-Replace the example host with the Render service URL, with no trailing slash after `/api`. The frontend uses this value for direct browser-to-API calls. For local development, leave it unset: the default remains `/api`, which Vite proxies to the local backend.
+Do not add `MONGODB_URI` as a `VITE_*` variable, to the frontend service, or to any tracked file. Vite embeds `VITE_*` values in browser assets. No frontend API URL variable is needed: the browser calls same-origin `/api`. In Vercel, the service invokes the exported Express app directly; `PORT` with a default of `5001` is used only for standalone local startup. `CLIENT_ORIGIN` is not required for same-origin browser requests; it remains available for local cross-origin development.
 
-Deploy or redeploy the Vercel project after setting the variable; Vite embeds it at build time. If the Vercel production domain changes, update Render's `CLIENT_ORIGIN` and redeploy/restart the API.
+The backend is publicly routed only by the root `/api` and `/api/*` rewrites. Other paths go to the frontend service. Do not add a service binding: frontend browser requests use the public same-domain route, and there are no server-side frontend-to-backend calls in this app.
 
-### 5. Verify the API and Atlas connection
+The existing API paths include `GET /api/health`, `GET /api`, `GET /api/beaches`, `GET /api/beaches/:id`, `GET /api/beaches/:id/full`, `GET /api/beaches/:id/facilities`, `GET|POST /api/search-history`, and `POST /api/reports`. The router preserves these paths; the API root `/api` is routed explicitly as well.
 
-Open this endpoint in a browser or request it with `curl`, substituting the Render service URL:
+### 4. Verify the deployment
 
-```bash
-curl https://<your-render-service>.onrender.com/api/health
-```
+1. Open `https://<your-project-domain>/api/health`.
+2. Confirm HTTP 200 and JSON with `"mongoReady":true`, `"database":"MongoDB"`, and `"mongoConfigured":true`. If MongoDB is unavailable, the health route returns HTTP 503; check that `MONGODB_URI` is present on the Backend service and that Atlas network access allows the connection.
+3. Open the project root and a client-side deep link such as `/beaches/<id>`. Confirm each renders the frontend and the app's API requests use the same domain with `/api/...`.
+4. Check that frontend build assets contain no Atlas URI or database password.
 
-Confirm the endpoint returns HTTP 200 with `"mongoReady":true`, `"database":"MongoDB"`, and `"mongoConfigured":true`. If Atlas is unavailable or not configured, the health check returns HTTP 503 with `"database":"fallback demo data"`; check the Render environment values, Atlas user/URI, Atlas Network Access, and Render logs. Other API routes keep their existing demo fallback behavior. Also open the Vercel site and test a nested route and an API-backed page.
+For local routing that matches Vercel Services, install the Vercel CLI and run `vercel dev` from the repository root. The existing `npm run dev` command remains available for running Vite and Express separately.
 
 ## Safe initial data seeding
 
-Seed only a newly created, otherwise empty database, before it contains any records that need to be kept. From `Backend/`, after configuring the environment to point at that fresh database, run:
+Seed only a newly created, otherwise empty database, before it contains any records that need to be kept. Set `MONGODB_URI` in the local shell or `Backend/.env`, then from `Backend/` run:
 
 ```bash
 npm run seed

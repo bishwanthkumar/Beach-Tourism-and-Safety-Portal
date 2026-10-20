@@ -1483,27 +1483,24 @@ app.post(
    SERVER START
 ========================================================= */
 
-app.listen(
-  PORT,
-  async () => {
-
-    console.log(
-      `BeachSafe API running at http://localhost:${PORT}`
-    );
-
-
-    if (MONGODB_URI) {
-
-      await connectMongo();
-
-    } else {
-
-      console.warn(
-        'MONGODB_URI is not configured.'
+if (process.env.VERCEL !== '1') {
+  app.listen(
+    PORT,
+    async () => {
+      console.log(
+        `BeachSafe API running at http://localhost:${PORT}`
       );
+
+      if (MONGODB_URI) {
+        await connectMongo();
+      } else {
+        console.warn(
+          'MONGODB_URI is not configured.'
+        );
+      }
     }
-  }
-);
+  );
+}
 
 
 /* =========================================================
