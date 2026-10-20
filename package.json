@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "install-all": "npm install --prefix client && npm install --prefix server",
-    "dev": "concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\""
+    "install-all": "npm install --prefix Backend && npm install --prefix Frontend",
+    "dev": "concurrently \"npm --prefix Backend run dev\" \"npm --prefix Frontend run dev\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

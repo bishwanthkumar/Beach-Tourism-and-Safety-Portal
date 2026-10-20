@@ -559,9 +559,7 @@ app.get(
 app.get(
   '/api',
   (req, res) => {
-
     res.json({
-
       success:
         true,
 
@@ -691,6 +689,16 @@ app.get(
     // before reporting the health state.
     await connectMongo();
 
+    if (!mongoReady) {
+      return res.status(503).json({
+        success: false,
+        service: 'BeachSafe API',
+        mongoReady,
+        database: 'fallback demo data',
+        mongoConfigured: Boolean(MONGODB_URI),
+        mongoError
+      });
+    }
 
     res.json({
 
